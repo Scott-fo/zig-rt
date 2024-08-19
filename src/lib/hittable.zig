@@ -2,6 +2,7 @@ const std = @import("std");
 const vec3 = @import("vec3.zig");
 const colour = @import("colour.zig");
 const ray = @import("ray.zig");
+const interval = @import("interval.zig");
 
 pub const HitRecord = struct {
     p: vec3.Point3,
@@ -16,10 +17,10 @@ pub const HitRecord = struct {
 };
 
 pub const Hittable = struct {
-    hitFn: *const fn (self: *Hittable, r: ray.Ray, ray_tmin: f32, ray_tmax: f32, rec: *HitRecord) bool,
+    hitFn: *const fn (self: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool,
 
-    pub fn hit(self: *Hittable, r: ray.Ray, ray_tmin: f32, ray_tmax: f32, rec: *HitRecord) bool {
-        return self.hitFn(self, r, ray_tmin, ray_tmax, rec);
+    pub fn hit(self: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
+        return self.hitFn(self, r, ray_t, rec);
     }
 };
 
@@ -46,13 +47,13 @@ pub const HittableList = struct {
         try self.objects.append(object);
     }
 
-    pub fn hit(self: *HittableList, r: ray.Ray, ray_tmin: f32, ray_tmax: f32, rec: *HitRecord) bool {
+    pub fn hit(self: *HittableList, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
         var temp_rec: HitRecord = undefined;
         var hit_anything = false;
-        var closest_so_far = ray_tmax;
+        var closest_so_far = ray_t.max;
 
         for (self.objects.items) |object| {
-            if (object.hit(r, ray_tmin, closest_so_far, &temp_rec)) {
+            if (object.hit(r, interval.Interval.init(ray_t.min, closest_so_far), &temp_rec)) {
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
                 rec.* = temp_rec;
@@ -77,7 +78,7 @@ pub const Sphere = struct {
         };
     }
 
-    pub fn hit(hittable: *Hittable, r: ray.Ray, ray_tmin: f32, ray_tmax: f32, rec: *HitRecord) bool {
+    pub fn hit(hittable: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
         const self: *Sphere = @fieldParentPtr("hittable", hittable);
 
         const oc = vec3.sub(self.center, r.origin);
@@ -94,9 +95,9 @@ pub const Sphere = struct {
         const sqrtd: f32 = @sqrt(discriminant);
 
         var root = (h - sqrtd) / a;
-        if ((root <= ray_tmin) or (ray_tmax <= root)) {
+        if (!ray_t.surrounds(root)) {
             root = (h + sqrtd) / a;
-            if ((root <= ray_tmin) or (ray_tmax <= root)) {
+            if (!ray_t.surrounds(root)) {
                 return false;
             }
         }

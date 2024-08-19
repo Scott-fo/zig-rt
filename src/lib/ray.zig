@@ -1,6 +1,7 @@
 const vec3 = @import("vec3.zig");
 const Colour = @import("colour.zig").Colour;
 const hittable = @import("hittable.zig");
+const interval = @import("interval.zig");
 const std = @import("std");
 
 pub const Ray = struct {
@@ -17,7 +18,7 @@ pub const Ray = struct {
     pub fn colour(self: Ray, world: *hittable.HittableList) Colour {
         var rec: hittable.HitRecord = undefined;
 
-        if (world.hit(self, 0, std.math.inf(f32), &rec)) {
+        if (world.hit(self, interval.Interval.init(0, std.math.inf(f32)), &rec)) {
             return vec3.scale(vec3.add(rec.normal, Colour.init(1, 1, 1)), 0.5);
         }
 
