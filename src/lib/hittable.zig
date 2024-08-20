@@ -3,10 +3,12 @@ const vec3 = @import("vec3.zig");
 const colour = @import("colour.zig");
 const ray = @import("ray.zig");
 const interval = @import("interval.zig");
+const material = @import("material.zig");
 
 pub const HitRecord = struct {
     p: vec3.Point3,
     normal: vec3.Vec3,
+    mat: *material.Material,
     t: f32,
     front_face: bool,
 
@@ -18,9 +20,14 @@ pub const HitRecord = struct {
 
 pub const Hittable = struct {
     hitFn: *const fn (self: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool,
+    deinitFn: *const fn (self: *Hittable, allocator: std.mem.Allocator) void,
 
     pub fn hit(self: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
         return self.hitFn(self, r, ray_t, rec);
+    }
+
+    pub fn deinit(self: *Hittable, allocator: std.mem.Allocator) void {
+        self.deinitFn(self, allocator);
     }
 };
 
@@ -36,11 +43,11 @@ pub const HittableList = struct {
     }
 
     pub fn deinit(self: *HittableList) void {
-        self.objects.deinit();
-    }
+        for (self.objects.items) |object| {
+            object.deinit(self.allocator);
+        }
 
-    pub fn clear(self: *HittableList) void {
-        self.objects.clearRetainingCapacity();
+        self.objects.deinit();
     }
 
     pub fn add(self: *HittableList, object: *Hittable) !void {
@@ -68,14 +75,24 @@ pub const Sphere = struct {
     center: vec3.Point3,
     radius: f32,
     hittable: Hittable,
+    material: *material.Material,
 
-    pub fn init(center: vec3.Point3, radius: f32) Sphere {
-        const r = if (radius > 0) radius else 0;
+    pub fn init(center: vec3.Point3, radius: f32, mat: *material.Material) Sphere {
         return Sphere{
             .center = center,
-            .radius = r,
-            .hittable = .{ .hitFn = hit },
+            .radius = if (radius > 0) radius else 0,
+            .hittable = .{
+                .hitFn = hit,
+                .deinitFn = deinit,
+            },
+            .material = mat,
         };
+    }
+
+    pub fn deinit(hittable: *Hittable, allocator: std.mem.Allocator) void {
+        const self: *Sphere = @fieldParentPtr("hittable", hittable);
+        self.material.deinit(allocator);
+        allocator.destroy(self);
     }
 
     pub fn hit(hittable: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
@@ -106,6 +123,7 @@ pub const Sphere = struct {
         rec.p = r.at(rec.t);
         const outward_normal = vec3.scale(vec3.sub(rec.p, self.center), 1 / self.radius);
         rec.set_face_normal(r, outward_normal);
+        rec.mat = self.material;
 
         return true;
     }

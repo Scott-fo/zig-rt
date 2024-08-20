@@ -28,8 +28,8 @@ pub fn main() !void {
     const world = try wr.World.init(allocator);
     defer world.deinit();
 
-    const c = camera.Camera.init();
-    try c.render(writer, world.list);
+    var c = camera.Camera.init();
+    try c.render(allocator, writer, world.list);
 
     try buffered_writer.flush();
 }

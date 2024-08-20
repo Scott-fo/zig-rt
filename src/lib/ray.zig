@@ -1,4 +1,5 @@
 const vec3 = @import("vec3.zig");
+const ray = @import("ray.zig");
 const Colour = @import("colour.zig").Colour;
 const hittable = @import("hittable.zig");
 const interval = @import("interval.zig");
@@ -23,10 +24,14 @@ pub const Ray = struct {
         var rec: hittable.HitRecord = undefined;
 
         if (world.hit(self, interval.Interval.init(0.001, std.math.inf(f32)), &rec)) {
-            const direction = vec3.add(rec.normal, vec3.random_unit_vector());
-            const r = init(rec.p, direction);
-            const c = r.colour(depth - 1, world);
-            return vec3.scale(c, 0.5);
+            var scattered: ray.Ray = undefined;
+            var attenuation: Colour = undefined;
+
+            if (rec.mat.scatter(self, rec, &attenuation, &scattered)) {
+                return vec3.mult(attenuation, scattered.colour(depth - 1, world));
+            }
+
+            return Colour.default();
         }
 
         const unit_direction = self.direction.unit_vector();

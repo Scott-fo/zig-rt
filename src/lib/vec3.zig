@@ -53,6 +53,11 @@ pub const Vec3 = struct {
     pub fn length(self: Vec3) f32 {
         return @sqrt(self.length_squared());
     }
+
+    pub fn near_zero(self: Vec3) bool {
+        const s = 1e-8;
+        return (@abs(self.x) < s and @abs(self.y) < s and @abs(self.z) < s);
+    }
 };
 
 pub const Point3 = Vec3;
@@ -63,6 +68,10 @@ pub fn random() Vec3 {
 
 pub fn random_in_range(min: f32, max: f32) Vec3 {
     return Vec3.init(utils.random_float_in_range(min, max), utils.random_float_in_range(min, max), utils.random_float_in_range(min, max));
+}
+
+pub inline fn reflect(v: Vec3, n: Vec3) Vec3 {
+    return sub(v, scale(n, 2 * dot(v, n)));
 }
 
 pub inline fn random_in_unit_sphere() Vec3 {
