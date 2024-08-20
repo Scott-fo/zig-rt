@@ -15,11 +15,18 @@ pub const Ray = struct {
         };
     }
 
-    pub fn colour(self: Ray, world: *hittable.HittableList) Colour {
+    pub fn colour(self: Ray, depth: usize, world: *hittable.HittableList) Colour {
+        if (depth <= 0) {
+            return Colour.default();
+        }
+
         var rec: hittable.HitRecord = undefined;
 
-        if (world.hit(self, interval.Interval.init(0, std.math.inf(f32)), &rec)) {
-            return vec3.scale(vec3.add(rec.normal, Colour.init(1, 1, 1)), 0.5);
+        if (world.hit(self, interval.Interval.init(0.001, std.math.inf(f32)), &rec)) {
+            const direction = vec3.add(rec.normal, vec3.random_unit_vector());
+            const r = init(rec.p, direction);
+            const c = r.colour(depth - 1, world);
+            return vec3.scale(c, 0.5);
         }
 
         const unit_direction = self.direction.unit_vector();

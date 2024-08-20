@@ -1,4 +1,5 @@
 const std = @import("std");
+const utils = @import("utils.zig");
 
 pub const Vec3 = struct {
     x: f32,
@@ -55,6 +56,36 @@ pub const Vec3 = struct {
 };
 
 pub const Point3 = Vec3;
+
+pub fn random() Vec3 {
+    return Vec3.init(utils.random_float(), utils.random_float(), utils.random_float());
+}
+
+pub fn random_in_range(min: f32, max: f32) Vec3 {
+    return Vec3.init(utils.random_float_in_range(min, max), utils.random_float_in_range(min, max), utils.random_float_in_range(min, max));
+}
+
+pub inline fn random_in_unit_sphere() Vec3 {
+    while (true) {
+        const p = random_in_range(-1, 1);
+        if (p.length_squared() < 1) {
+            return p;
+        }
+    }
+}
+
+pub inline fn random_unit_vector() Vec3 {
+    return random_in_unit_sphere().unit_vector();
+}
+
+pub inline fn random_on_hemisphere(normal: Vec3) Vec3 {
+    const on_unit_sphere = random_unit_vector();
+    if (dot(on_unit_sphere, normal) > 0.0) {
+        return on_unit_sphere;
+    } else {
+        return on_unit_sphere.neg();
+    }
+}
 
 pub inline fn add(u: Vec3, v: Vec3) Vec3 {
     return Vec3{
