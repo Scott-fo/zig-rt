@@ -1,12 +1,11 @@
 const std = @import("std");
-const vec3 = @import("lib/vec3.zig");
 const hittable = @import("lib/hittable.zig");
-const camera = @import("lib/camera.zig");
-const wr = @import("lib/world.zig");
+const Camera = @import("lib/Camera.zig");
+const World = @import("lib/World.zig");
 const utils = @import("lib/utils.zig");
 
 test {
-    _ = @import("lib/vec3.zig");
+    _ = @import("lib/Vec3.zig");
 }
 
 pub fn main() !void {
@@ -25,10 +24,10 @@ pub fn main() !void {
     var buffered_writer = std.io.bufferedWriter(file.writer());
     const writer = buffered_writer.writer();
 
-    const world = try wr.World.init(allocator);
+    const world = try World.init(allocator);
     defer world.deinit();
 
-    var c = camera.Camera.init();
+    var c = Camera.init();
     try c.render(allocator, writer, world.list);
 
     try buffered_writer.flush();

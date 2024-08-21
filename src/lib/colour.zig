@@ -1,9 +1,10 @@
-const vec = @import("vec3.zig");
 const fs = @import("std").fs;
-const interval = @import("interval.zig");
 const std = @import("std");
 
-pub const Colour = vec.Vec3;
+const Vec3 = @import("Vec3.zig");
+const Interval = @import("Interval.zig");
+
+pub const Colour = Vec3;
 
 inline fn linear_to_gamma(linear_component: f32) f32 {
     if (linear_component > 0) {
@@ -22,7 +23,7 @@ pub fn write_colour(out: anytype, pixel_colour: Colour) !void {
     g = linear_to_gamma(g);
     b = linear_to_gamma(b);
 
-    const intensity = interval.Interval.init(0.000, 0.999);
+    const intensity = Interval.init(0.000, 0.999);
 
     const ir: i32 = @intFromFloat(256 * intensity.clamp(r));
     const ig: i32 = @intFromFloat(256 * intensity.clamp(g));

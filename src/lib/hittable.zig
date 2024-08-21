@@ -1,28 +1,31 @@
 const std = @import("std");
-const vec3 = @import("vec3.zig");
+
+const Vec3 = @import("Vec3.zig");
+const Point3 = Vec3.Point3;
+const Ray = @import("Ray.zig");
+const Interval = @import("Interval.zig");
+
 const colour = @import("colour.zig");
-const ray = @import("ray.zig");
-const interval = @import("interval.zig");
 const material = @import("material.zig");
 
 pub const HitRecord = struct {
-    p: vec3.Point3,
-    normal: vec3.Vec3,
+    p: Point3,
+    normal: Vec3,
     mat: *material.Material,
     t: f32,
     front_face: bool,
 
-    pub fn set_face_normal(self: *HitRecord, r: ray.Ray, outward_normal: vec3.Vec3) void {
-        self.front_face = vec3.dot(r.direction, outward_normal) < 0;
+    pub fn set_face_normal(self: *HitRecord, r: Ray, outward_normal: Vec3) void {
+        self.front_face = Vec3.dot(r.direction, outward_normal) < 0;
         self.normal = if (self.front_face) outward_normal else outward_normal.neg();
     }
 };
 
 pub const Hittable = struct {
-    hitFn: *const fn (self: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool,
+    hitFn: *const fn (self: *Hittable, r: Ray, ray_t: Interval, rec: *HitRecord) bool,
     deinitFn: *const fn (self: *Hittable, allocator: std.mem.Allocator) void,
 
-    pub fn hit(self: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
+    pub fn hit(self: *Hittable, r: Ray, ray_t: Interval, rec: *HitRecord) bool {
         return self.hitFn(self, r, ray_t, rec);
     }
 
@@ -36,7 +39,7 @@ pub const HittableList = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) HittableList {
-        return HittableList{
+        return .{
             .objects = std.ArrayList(*Hittable).init(allocator),
             .allocator = allocator,
         };
@@ -54,13 +57,13 @@ pub const HittableList = struct {
         try self.objects.append(object);
     }
 
-    pub fn hit(self: *HittableList, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
+    pub fn hit(self: *HittableList, r: Ray, ray_t: Interval, rec: *HitRecord) bool {
         var temp_rec: HitRecord = undefined;
         var hit_anything = false;
         var closest_so_far = ray_t.max;
 
         for (self.objects.items) |object| {
-            if (object.hit(r, interval.Interval.init(ray_t.min, closest_so_far), &temp_rec)) {
+            if (object.hit(r, Interval.init(ray_t.min, closest_so_far), &temp_rec)) {
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
                 rec.* = temp_rec;
@@ -72,13 +75,14 @@ pub const HittableList = struct {
 };
 
 pub const Sphere = struct {
-    center: vec3.Point3,
+    center: Point3,
     radius: f32,
     hittable: Hittable,
     material: *material.Material,
 
-    pub fn init(center: vec3.Point3, radius: f32, mat: *material.Material) Sphere {
-        return Sphere{
+    pub fn init(allocator: std.mem.Allocator, center: Point3, radius: f32, mat: *material.Material) !*Sphere {
+        const self = try allocator.create(@This());
+        self.* = .{
             .center = center,
             .radius = if (radius > 0) radius else 0,
             .hittable = .{
@@ -87,6 +91,8 @@ pub const Sphere = struct {
             },
             .material = mat,
         };
+
+        return self;
     }
 
     pub fn deinit(hittable: *Hittable, allocator: std.mem.Allocator) void {
@@ -95,12 +101,12 @@ pub const Sphere = struct {
         allocator.destroy(self);
     }
 
-    pub fn hit(hittable: *Hittable, r: ray.Ray, ray_t: interval.Interval, rec: *HitRecord) bool {
+    pub fn hit(hittable: *Hittable, r: Ray, ray_t: Interval, rec: *HitRecord) bool {
         const self: *Sphere = @fieldParentPtr("hittable", hittable);
 
-        const oc = vec3.sub(self.center, r.origin);
+        const oc = Vec3.sub(self.center, r.origin);
         const a = r.direction.length_squared();
-        const h = vec3.dot(r.direction, oc);
+        const h = Vec3.dot(r.direction, oc);
         const c = oc.length_squared() - (self.radius * self.radius);
 
         const discriminant = h * h - a * c;
@@ -121,7 +127,7 @@ pub const Sphere = struct {
 
         rec.t = root;
         rec.p = r.at(rec.t);
-        const outward_normal = vec3.scale(vec3.sub(rec.p, self.center), 1 / self.radius);
+        const outward_normal = Vec3.scale(Vec3.sub(rec.p, self.center), 1 / self.radius);
         rec.set_face_normal(r, outward_normal);
         rec.mat = self.material;
 
